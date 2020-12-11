@@ -14,7 +14,7 @@ import sklearn
 from sklearn import svm, datasets
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.metrics import classification_report
-from sklearn.model_selection import train_test_split, GridSearchCV, KFold, cross_val_score, cross_validate
+from sklearn.model_selection import train_test_split, GridSearchCV, GroupKFold, cross_val_score, cross_validate
 
 
 class PCA:
@@ -82,12 +82,18 @@ class PCA:
 
         plt.bar(x, eigens1[:100])
         plt.title("First Hundered of X1")
+        plt.xlabel("Principal Components")
+        plt.ylabel("PC Values")
         plt.show()
         plt.bar(x, eigens2[:100])
         plt.title("First Hundered of X2")
+        plt.ylabel("PC Values")
+        plt.xlabel("Principal Components")
         plt.show()
         plt.bar(x, eigens3[:100])
         plt.title("First Hundered of X3")
+        plt.xlabel("Principal Components")
+        plt.ylabel("PC Values")
         plt.show()
 
         # Calculate Proportion of Variance (PVE)
@@ -136,12 +142,18 @@ class PCA:
 
         plt.bar(x, eigen1[:100])
         plt.title("First Hundered of X1 Noisy Dataset")
+        plt.xlabel("Principal Components")
+        plt.ylabel("PC Values")
         plt.show()
         plt.bar(x, eigen2[:100])
         plt.title("First Hundered of X2 Noisy Dataset")
+        plt.xlabel("Principal Components")
+        plt.ylabel("PC Values")
         plt.show()
         plt.bar(x, eigen3[:100])
         plt.title("First Hundered of X3 Noisy Dataset")
+        plt.xlabel("Principal Components")
+        plt.ylabel("PC Values")
         plt.show()
 
     # Q2 METHODS
@@ -362,6 +374,17 @@ class PCA:
                 errors.append(weights)
         return w0, weights
 
+    def stochastic(self, train_feat, train_labels, learning_rate=0.0001, iterations=1000):
+        w0_full = np.random.normal(0, 0.01, 1)
+        weights_full = np.random.normal(0, 0.01, len(train_feat[0]))
+        for i in range(iterations):
+            for j in range(len(train_feat)):
+                pred = np.asarray([train_labels[j] - self.predict_current(w0_full, weights_full, train_feat[j])])
+                w0_full = w0_full + learning_rate * pred
+                gradient = train_feat[j] * pred
+                weights_full = weights_full + learning_rate * gradient
+        return w0_full, weights_full
+
     def full_batch(self, train_feat, train_labels, learning_rate=0.0001, iterations=1000):
         """Method to apply Full-Batch Gradient Ascent"""
         w0_full = np.random.normal(0, 0.01, 1)
@@ -380,6 +403,8 @@ class PCA:
         return w0_full, weights_full
 
     def logistic_reg(self):
+        print("\n")
+        print("---Q3: LOGISTIC REGRESSION---------------------")
         # Read data: Shape 500 x 8
         train = np.loadtxt(self.log_train_path, delimiter=',', skiprows=1, dtype=object)
         test = np.loadtxt(self.log_test_path, delimiter=',', skiprows=1, dtype=object)
@@ -440,6 +465,11 @@ class PCA:
         w0_2, weights_2 = self.gradient_ascent(train_feat, train_labels, learning_rate=0.01)
         w0_3, weights_3 = self.gradient_ascent(train_feat, train_labels, learning_rate=0.001)
 
+        # Apply Stochastic Gradient Ascent
+        w0_sto, weights_sto = self.stochastic(train_feat, train_labels)
+        w0_sto_2, weights_sto_2 = self.stochastic(train_feat, train_labels, learning_rate=0.01)
+        w0_sto_3, weights_sto_3 = self.stochastic(train_feat, train_labels, learning_rate=0.001)
+
         # Apply Full-Batch Gradient Ascent
         w0_full_batch, weights_full_batch = self.full_batch(train_feat, train_labels)
         w0_full_batch_2, weights_full_batch_2 = self.full_batch(train_feat, train_labels, learning_rate=0.01)
@@ -449,10 +479,13 @@ class PCA:
 
         # Declare all variables to keep track the accuracy and all
         preds, preds_2, preds_3 = np.zeros((len(test_feat))), np.zeros((len(test_feat))), np.zeros((len(test_feat)))
+        preds_sto, preds_sto_2, preds_sto_3 = np.zeros((len(test_feat))), np.zeros((len(test_feat))), np.zeros((len(test_feat)))
         preds_full_batch, preds_full_batch_2, preds_full_batch_3 = np.zeros((len(test_feat))), np.zeros((len(test_feat))), np.zeros((len(test_feat)))
         falses, falses_2, falses_3 = 0, 0, 0
+        falses_sto, falses_sto_2, falses_sto_3 = 0, 0, 0
         falses_full_batch, falses_full_batch_2, falses_full_batch_3 = 0, 0, 0
         corrects, corrects_2, corrects_3 = 0, 0, 0
+        corrects_sto, corrects_sto_2, corrects_sto_3 = 0, 0, 0
         corrects_full_batch, corrects_full_batch_2, corrects_full_batch_3 = 0, 0, 0
 
         # FN = Survived, dead predicted
@@ -463,6 +496,11 @@ class PCA:
         tp, tn, fp, fn = 0, 0, 0, 0
         tp_2, tn_2, fp_2, fn_2 = 0, 0, 0, 0
         tp_3, tn_3, fp_3, fn_3 = 0, 0, 0, 0
+
+        tp_sto, tn_sto, fp_sto, fn_sto = 0, 0, 0, 0
+        tp_sto_2, tn_sto_2, fp_sto_2, fn_sto_2 = 0, 0, 0, 0
+        tp_sto_3, tn_sto_3, fp_sto_3, fn_sto_3 = 0, 0, 0, 0
+
         tp_full, tn_full, fp_full, fn_full = 0, 0, 0, 0
         tp_full_2, tn_full_2, fp_full_2, fn_full_2 = 0, 0, 0, 0
         tp_full_3, tn_full_3, fp_full_3, fn_full_3 = 0, 0, 0, 0
@@ -474,11 +512,16 @@ class PCA:
             pred_2 = self.predict_current(w0_2, weights_2, test_feat[row])
             pred_3 = self.predict_current(w0_3, weights_3, test_feat[row])
 
+            pred_sto = self.predict_current(w0_sto, weights_sto, test_feat[row])
+            pred_sto_2 = self.predict_current(w0_sto_2, weights_sto_2, test_feat[row])
+            pred_sto_3 = self.predict_current(w0_sto_3, weights_sto_3, test_feat[row])
+
             pred_full_batch = self.predict_current(w0_full_batch, weights_full_batch, test_feat[row])
             pred_full_batch_2 = self.predict_current(w0_full_batch_2, weights_full_batch_2, test_feat[row])
             pred_full_batch_3 = self.predict_current(w0_full_batch_3, weights_full_batch_3, test_feat[row])
 
             preds[row], preds_2[row], preds_3[row] = pred, pred_2, pred_3
+            preds_sto[row], preds_sto_2[row], preds_sto_3[row] = pred_sto, pred_sto_2, pred_sto_3
             preds_full_batch[row], preds_full_batch_2[row], preds_full_batch_3[row] = pred_full_batch, pred_full_batch_2, pred_full_batch_3
 
             # If statements to collect false and correct predictions for mini-batch
@@ -520,6 +563,46 @@ class PCA:
                     tp_3 += 1
                 else:
                     tn_3 += 1
+
+            # If statements to collect false and correct predictions for stochastic
+            if abs(test_labels[row] - pred_sto) != 0:
+                falses_sto += 1
+                if pred_sto == 0:
+                    fn_sto += 1
+                else:
+                    fp_sto += 1
+            else:
+                corrects_sto += 1
+                if pred_sto == 1:
+                    tp_sto += 1
+                else:
+                    tn_sto += 1
+
+            if abs(test_labels[row] - pred_sto_2) != 0:
+                falses_sto_2 += 1
+                if pred_sto_2 == 0:
+                    fn_sto_2 += 1
+                else:
+                    fp_sto_2 += 1
+            else:
+                corrects_sto_2 += 1
+                if pred_sto_2 == 1:
+                    tp_sto_2 += 1
+                else:
+                    tn_sto_2 += 1
+
+            if abs(test_labels[row] - pred_sto_3) != 0:
+                falses_sto_3 += 1
+                if pred_sto_3 == 0:
+                    fn_sto_3 += 1
+                else:
+                    fp_sto_3 += 1
+            else:
+                corrects_sto_3 += 1
+                if pred_sto_3 == 1:
+                    tp_sto_3 += 1
+                else:
+                    tn_sto_3 += 1
 
             # If statements to collect false and correct predictions for full-batch
             if abs(test_labels[row] - pred_full_batch) != 0:
@@ -582,6 +665,26 @@ class PCA:
         f2 = (5 * precision * recall) / (4 * precision + recall)
         print("F1:", f1, "F2: ", f2)
 
+        print("----STOCHASTIC----")
+        print("False preds: ", falses_sto)
+        print("Correct preds: ", corrects_sto)
+        accuracy_sto = corrects_sto / len(test_labels)
+        print("Accuracy: ", accuracy_sto)
+        print("TP, TN, FP, FN: ", tp_sto, tn_sto, fp_sto, fn_sto)
+        FPR_sto = fp_sto / (fp_sto + tn_sto)
+        print("False Positive Rate: ", FPR_sto)
+        NPV_sto = tn_sto / (fn_sto + tn_sto)
+        print("Negative Predictive Value: ", NPV_sto)
+        precision_sto = tp_sto / (tp_sto + fp_sto)
+        FDR_sto = fp_sto / (fp_sto + tp_sto)
+        print("False Discovery Rate: ", FDR_sto)
+        print("Precision: ", precision_sto)
+        recall_sto = tp_sto / (tp_sto + fn_sto)
+        print("Recall: ", recall_sto)
+        f1_sto = (2 * precision_sto * recall_sto) / (precision_sto + recall_sto)
+        f2_sto = (5 * precision_sto * recall_sto) / (4 * precision_sto + recall_sto)
+        print("F1:", f1_sto, "F2: ", f2_sto)
+
         print("----FULL BATCH----")
         print("False preds: ", falses_full_batch)
         print("Correct preds: ", corrects_full_batch)
@@ -621,6 +724,26 @@ class PCA:
         f1_3 = (2 * precision_3 * recall_3) / (precision_3 + recall_3)
         f2_3 = (5 * precision_3 * recall_3) / (4 * precision_3 + recall_3)
         print("F1:", f1_3, "F2: ", f2_3)
+
+        print("----STOCHASTIC----")
+        print("False preds: ", falses_sto_3)
+        print("Correct preds: ", corrects_sto_3)
+        accuracy_sto_3 = corrects_sto_3 / len(test_labels)
+        print("Accuracy: ", accuracy_sto_3)
+        print("TP, TN, FP, FN: ", tp_sto_3, tn_sto_3, fp_sto_3, fn_sto_3)
+        FPR_sto_3 = fp_sto_3 / (fp_sto_3 + tn_sto_3)
+        print("False Positive Rate: ", FPR_sto_3)
+        NPV_sto_3 = tn_sto_3 / (fn_sto_3 + tn_sto_3)
+        print("Negative Predictive Value: ", NPV_sto_3)
+        precision_sto_3 = tp_sto_3 / (tp_sto_3 + fp_sto_3)
+        FDR_sto_3 = fp_sto_3 / (fp_sto_3 + tp_sto_3)
+        print("False Discovery Rate: ", FDR_sto_3)
+        print("Precision: ", precision_sto_3)
+        recall_sto_3 = tp_sto_3 / (tp_sto + fn_sto_3)
+        print("Recall: ", recall_sto_3)
+        f1_sto_3 = (2 * precision_sto_3 * recall_sto_3) / (precision_sto_3 + recall_sto_3)
+        f2_sto_3 = (5 * precision_sto_3 * recall_sto_3) / (4 * precision_sto_3 + recall_sto_3)
+        print("F1:", f1_sto_3, "F2: ", f2_sto_3)
 
         print("----FULL BATCH----")
         print("False preds: ", falses_full_batch_3)
@@ -662,6 +785,26 @@ class PCA:
         f2_2 = (5 * precision_2 * recall_2) / (4 * precision_2 + recall_2)
         print("F1:", f1_2, "F2: ", f2_2)
 
+        print("----STOCHASTIC----")
+        print("False preds: ", falses_sto_2)
+        print("Correct preds: ", corrects_sto_2)
+        accuracy_sto_2 = corrects_sto_2 / len(test_labels)
+        print("Accuracy: ", accuracy_sto_2)
+        print("TP, TN, FP, FN: ", tp_sto_2, tn_sto_2, fp_sto_2, fn_sto_2)
+        FPR_sto_2 = fp_sto_2 / (fp_sto_2 + tn_sto_2)
+        print("False Positive Rate: ", FPR_sto_2)
+        NPV_sto_2 = tn_sto_2 / (fn_sto_2 + tn_sto_2)
+        print("Negative Predictive Value: ", NPV_sto_2)
+        precision_sto_2 = tp_sto_2 / (tp_sto_2 + fp_sto_2)
+        FDR_sto_2 = fp_sto_2 / (fp_sto_2 + tp_sto_2)
+        print("False Discovery Rate: ", FDR_sto_2)
+        print("Precision: ", precision_sto_2)
+        recall_sto_2 = tp_sto_2 / (tp_sto + fn_sto_2)
+        print("Recall: ", recall_sto_2)
+        f1_sto_2 = (2 * precision_sto_2 * recall_sto_2) / (precision_sto_2 + recall_sto_2)
+        f2_sto_2 = (5 * precision_sto_2 * recall_sto_2) / (4 * precision_sto_2 + recall_sto_2)
+        print("F1:", f1_sto_2, "F2: ", f2_sto_2)
+
         print("----FULL BATCH----")
         print("False preds: ", falses_full_batch_2)
         print("Correct preds: ", corrects_full_batch_2)
@@ -684,6 +827,8 @@ class PCA:
 
     # Q4 METHODS
     def svm(self):
+        print("\n")
+        print("---Q4: SVM---------------------")
         # Take Data
         mat = loadmat(self.svm_path)
 
@@ -730,8 +875,14 @@ class PCA:
         fold4_val_label = f5_label
         fold5_val_label = f1_label
 
-        grid = GridSearchCV(sklearn.linear_model.Ridge, C, scoring='%s_macro')
-        # Problem with GridSearch --> 'float' object has no attribute 'items'
+        #k_fold = GroupKFold(n_splits=5)
+        #k_fold.get_n_splits(inception, labels)
+        #print(k_fold)
+
+        parameters = {'kernel': ('linear', 'rbf'), 'C': C}
+
+        grid = GridSearchCV(estimator=svm.SVC, param_grid=parameters)
+        #grid.fit(fold1_val)
 
 
         #clf = GridSearchCV(SVC(C=1), tuned_parameters, cv=5)
@@ -748,22 +899,22 @@ class PCA:
         #print(classification_report(test_feat, pred))
 
 
-
 if __name__ == '__main__':
     pca = PCA("datasets/van_gogh", "datasets/q2_dataset.csv", "datasets/q3_train_dataset.csv", "datasets/q3_test_dataset.csv", "datasets/q4_dataset.mat")
 
     # Q1: PCA
-    #images = pca.load_images()
-    #x1, x2, x3 = pca.preprocess(images)
-    #pca.pca_first_hundred(x1, x2, x3)
-    #pca.noisy_van_gogh()
+    images = pca.load_images()
+    x1, x2, x3 = pca.preprocess(images)
+    pca.pca_first_hundred(x1, x2, x3)
+    pca.noisy_van_gogh()
 
     # Q2: Linear Regression
-    #pca.linear_regression()
+    pca.linear_regression()
 
     # Q3: Logistic Regression
-    #pca.logistic_reg()
+    pca.logistic_reg()
 
+    # Q4: SVM
     pca.svm()
 
 
